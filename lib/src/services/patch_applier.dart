@@ -61,10 +61,35 @@ class PatchApplyResult {
   });
 }
 
+/// השלב שבו hash לוגי לא תאם לערך שב-manifest.
+enum PatchHashMismatchStage {
+  /// ה-DB לפני apply לא תאם ל-fromContentHash.
+  fromContentHash,
+
+  /// התוצאה לפני commit לא תאמה ל-toContentHash.
+  toContentHash,
+}
+
 /// נזרק כאשר preflight או אימות נכשלים — ה-DB לא שונה (לא בוצע commit).
 class PatchApplyException implements Exception {
   final String message;
-  const PatchApplyException(this.message);
+
+  /// true כשה-hash הלוגי אינו תואם (from או to), ולכן אין לסמוך על מסלול
+  /// הדלתא ויש להציע fallback להורדה מלאה.
+  ///
+  /// אי-התאמת toContentHash אינה מוכיחה לבדה שהמקור המקומי סטה: היא עשויה
+  /// להעיד גם על patch/manifest לא עקביים או על באג ב-applier. ראו
+  /// [hashMismatchStage] לאבחון מדויק.
+  final bool isContentMismatch;
+
+  /// null בכשל שאינו hash; אחרת מציין איזה אימות hash נכשל.
+  final PatchHashMismatchStage? hashMismatchStage;
+
+  const PatchApplyException(
+    this.message, {
+    bool isContentMismatch = false,
+    this.hashMismatchStage,
+  }) : isContentMismatch = isContentMismatch || hashMismatchStage != null;
   @override
   String toString() => 'PatchApplyException: $message';
 }
@@ -176,6 +201,7 @@ class PatchApplier {
           throw PatchApplyException(
             'ה-DB המקומי שונה מהצפוי — hash לא תואם ל-fromContentHash. '
             'נדרשת הורדה מלאה.',
+            hashMismatchStage: PatchHashMismatchStage.fromContentHash,
           );
         }
       }
@@ -228,6 +254,7 @@ class PatchApplier {
         throw PatchApplyException(
           'ה-hash אחרי apply ($resultHash) אינו תואם ל-toContentHash '
           '(${manifest.toContentHash})',
+          hashMismatchStage: PatchHashMismatchStage.toContentHash,
         );
       }
 
