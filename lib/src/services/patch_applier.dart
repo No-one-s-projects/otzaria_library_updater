@@ -95,13 +95,16 @@ class PatchApplyException implements Exception {
 }
 
 /// בוחר את סדר ה-hash לפי גרסת הסכמה: 1 → [kHashTableOrderSchema1] (33 הישן),
-/// 2 → [kHashTableOrder] (34 הנוכחי). כל ערך אחר → זריקה (fail loudly).
+/// 2 → [kHashTableOrder] (34), 3 → [kHashTableOrderSchema3] (36, תוכן דחוס).
+/// כל ערך אחר → זריקה (fail loudly).
 List<String> hashTableOrderForSchemaVersion(int schemaVersion) {
   switch (schemaVersion) {
     case 1:
       return kHashTableOrderSchema1;
     case 2:
       return kHashTableOrder;
+    case 3:
+      return kHashTableOrderSchema3;
     default:
       throw PatchApplyException(
         'גרסת סכמה $schemaVersion אינה נתמכת לבחירת סדר hash',
@@ -126,7 +129,7 @@ class PatchApplier {
 
   const PatchApplier({
     this.hasher = const LogicalContentHasher(),
-    this.supportedSchemaVersion = 2,
+    this.supportedSchemaVersion = 3,
   });
 
   /// מחיל את ה-patch שב-[patchPath] על ה-DB שב-[dbPath] לפי [manifest].
